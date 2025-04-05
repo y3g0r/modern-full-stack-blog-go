@@ -1,6 +1,7 @@
 package db
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
 
@@ -51,9 +52,9 @@ func Example() {
 	// Named queries can use structs, so if you have an existing struct (i.e. person := &Person{}) that you have populated, you can pass it in as &person
 	content := "This is a test"
 	tx.NamedExec("INSERT INTO posts (id, title, content) VALUES (:ID, :Title, :Content)", &repo.PostRecord{
-		ID:      1,
+		ID:      2,
 		Title:   "Example post",
-		Content: &content,
+		Content: sql.NullString{String: content, Valid: true},
 	})
 	tx.Commit()
 

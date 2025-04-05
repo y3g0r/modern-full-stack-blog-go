@@ -1,7 +1,9 @@
 package repo
 
+import "database/sql"
+
 type PostRecord struct {
 	ID      int     `db:"id"`
 	Title   string  `db:"title"`
-	Content *string `db:"content"`
+	Content sql.NullString `db:"content"`
 }

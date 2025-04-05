@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"database/sql"
 	"fmt"
 
 	"github.com/y3g0r/modern-full-stack-blog-go/internal/domain"
@@ -18,7 +19,18 @@ func NewInMemoryPostsRepo() *InMemoryPostsRepo {
 }
 
 func (dao *InMemoryPostsRepo) CreatePost(post domain.Post) error {
-	dao.posts[post.ID] = PostRecord(post)
+	var content sql.NullString
+	if post.Content != nil {
+		content = sql.NullString{String: *post.Content, Valid: true}
+	} else {
+		content = sql.NullString{Valid: false}
+	}
+
+	dao.posts[post.ID] = PostRecord{
+		ID:      post.ID,
+		Title:   post.Title,
+		Content: content,
+	}
 	return nil
 }
 
@@ -27,7 +39,17 @@ func (dao *InMemoryPostsRepo) GetPost(id int) (domain.Post, error) {
 	if !exists {
 		return domain.Post{}, fmt.Errorf("post with id %d not found", id)
 	}
-	return domain.Post(post), nil
+
+	var content *string
+	if post.Content.Valid {
+		content = &post.Content.String
+	}
+
+	return domain.Post{
+		ID:      post.ID,
+		Title:   post.Title,
+		Content: content,
+	}, nil
 }
 
 func (dao *InMemoryPostsRepo) UpdatePost(postId int, params service.UpdatePostParams) error {
@@ -42,11 +64,7 @@ func (dao *InMemoryPostsRepo) UpdatePost(postId int, params service.UpdatePostPa
 	}
 
 	if params.Content.Valid {
-		if params.Content.V.Valid {
-			post.Content = &params.Content.V.String
-		} else {
-			post.Content = nil
-		}
+		post.Content = params.Content.V
 	}
 	dao.posts[postId] = post
 	return nil
@@ -64,7 +82,15 @@ func (dao *InMemoryPostsRepo) DeletePost(id int) error {
 func (dao *InMemoryPostsRepo) GetPosts() ([]domain.Post, error) {
 	posts := make([]domain.Post, 0, len(dao.posts))
 	for _, post := range dao.posts {
-		posts = append(posts, domain.Post(post))
+		var content *string
+		if post.Content.Valid {
+			content = &post.Content.String
+		}
+		posts = append(posts, domain.Post{
+			ID:      post.ID,
+			Title:   post.Title,
+			Content: content,
+		})
 	}
 	return posts, nil
 }

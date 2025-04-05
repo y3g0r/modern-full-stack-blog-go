@@ -1,3 +1,4 @@
+# App
 generate:
 	@echo "Generating..."
 	@go generate ./...
@@ -6,18 +7,21 @@ run:
 	@echo "Running..."
 	@go run cmd/server/main.go
 
-dbup:
+# DB
+db-up:
 	@echo "Starting database..."
 	@sh scripts/run-postgres.sh 
 
-dbdown:
+db-down:
 	@echo "Stopping database..."
 	@sh scripts/stop-postgres.sh
 
-db:
+db-migrate:
 	@echo "Migrating..."
-	@go run cmd/migrate/main.go
+	@migrate -path db/migrations -database ${DATABASE_URL} up
 
+
+# Docker
 docker-image:
 	@echo "Building docker image..."
 	@docker build -t jam-schedule-api .
