@@ -1,20 +1,22 @@
 package repo
 
 import (
+	"log/slog"
+
 	"github.com/jmoiron/sqlx"
 	"github.com/y3g0r/modern-full-stack-blog-go/internal/domain"
-	"github.com/y3g0r/modern-full-stack-blog-go/internal/logger"
 	"github.com/y3g0r/modern-full-stack-blog-go/internal/service"
 )
 
 type PostgresPostsRepo struct {
 	db     *sqlx.DB
-	logger logger.Interface
+	logger *slog.Logger
 }
 
-func NewPostgresPostsRepo(db *sqlx.DB, logger logger.Interface) *PostgresPostsRepo {
+func NewPostgresPostsRepo(db *sqlx.DB, logger *slog.Logger) *PostgresPostsRepo {
 	return &PostgresPostsRepo{
-		db: db,
+		db:     db,
+		logger: logger,
 	}
 }
 
@@ -48,7 +50,7 @@ func (r *PostgresPostsRepo) GetPosts() ([]domain.Post, error) {
 		var record PostRecord
 		err = rows.StructScan(&record)
 		if err != nil {
-			r.logger.Error("Failed to struct scan " + err.Error())
+			r.logger.Error("Failed to struct scan: " + err.Error())
 			return []domain.Post{}, err
 		}
 

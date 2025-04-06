@@ -1,8 +1,7 @@
 package main
 
 import (
-	"fmt"
-	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -11,20 +10,26 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
+	"github.com/lmittmann/tint"
 	middleware "github.com/oapi-codegen/nethttp-middleware"
 	"github.com/y3g0r/modern-full-stack-blog-go/api"
 	"github.com/y3g0r/modern-full-stack-blog-go/configs"
-	"github.com/y3g0r/modern-full-stack-blog-go/internal/logger"
 	"github.com/y3g0r/modern-full-stack-blog-go/internal/repo"
 	"github.com/y3g0r/modern-full-stack-blog-go/internal/service"
 )
 
 func main() {
+	// logHandler := slog.NewTextHandler(os.Stdout, nil)
+	logHandler := tint.NewHandler(os.Stdout, nil)
+	logger := slog.New(logHandler)
+	logLogger := slog.NewLogLogger(logHandler, slog.LevelError)
+	slog.SetDefault(logger)
+
 	config := configs.Load()
 
 	swagger, err := api.GetSwagger()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error loading swagger spec\n: %s", err)
+		logger.Error("Error loading swagger spec\n: %s", err)
 		os.Exit(1)
 	}
 
@@ -35,10 +40,8 @@ func main() {
 	// TODO: get connection parameters from config
 	db, err := sqlx.Connect("postgres", "user=admin password=CHANGEME dbname=blog sslmode=disable")
 	if err != nil {
-		log.Fatalln(err)
+		logger.Error(err.Error())
 	}
-
-	logger := logger.NewZapLogger()
 
 	postsRepo := repo.NewPostgresPostsRepo(db, logger)
 	// postsRepo := repo.NewInMemoryPostsRepo()
@@ -72,11 +75,20 @@ func main() {
 	// We now register our petStore above as the handler for the interface
 	api.HandlerFromMux(blogStictHandler, r)
 
+	addr := net.JoinHostPort("0.0.0.0", config.PORT)
+
 	s := &http.Server{
-		Handler: r,
-		Addr:    net.JoinHostPort("0.0.0.0", config.PORT),
+		Handler:  r,
+		Addr:     addr,
+		ErrorLog: logLogger,
 	}
 
+	logger.Info("Listening on " + addr)
 	// And we serve HTTP until the world ends.
-	log.Fatal(s.ListenAndServe())
+	err = s.ListenAndServe()
+	if err != nil {
+		logger.Error(err.Error())
+		os.Exit(1)
+	}
+
 }

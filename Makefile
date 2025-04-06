@@ -17,9 +17,12 @@ db-down:
 	@sh scripts/stop-postgres.sh
 
 db-migrate:
-	@echo "Migrating..."
-	@migrate -path db/migrations -database ${DATABASE_URL} up
-
+	@set -o allexport; \
+	if [ -f .env ]; then source .env; fi; \
+	go run -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate \
+		-database "$$DATABASE_URL" \
+		-path db/migrations \
+		up
 
 # Docker
 docker-image:
