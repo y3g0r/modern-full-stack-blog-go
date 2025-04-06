@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"database/sql"
 	"log/slog"
 
 	"github.com/jmoiron/sqlx"
@@ -24,7 +25,29 @@ func NewPostgresPostsRepo(db *sqlx.DB, logger *slog.Logger) *PostgresPostsRepo {
 // TODO: will need to introduce explicit transaction management
 // CreatePost implements service.PostsRepo.
 func (r *PostgresPostsRepo) CreatePost(post domain.Post) error {
-	panic("unimplemented")
+	tx, err := r.db.Begin()
+	if err != nil {
+		r.logger.Error(err.Error())
+		return err
+	}
+	var content sql.NullString
+	if post.Content != nil {
+		content = sql.NullString{String: *post.Content, Valid: true}
+	} else {
+		content = sql.NullString{Valid: false}
+	}
+	
+	_, err = tx.Exec("INSERT INTO posts (id, title, content) VALUES ($1, $2, $3)", post.ID, post.Title, content)
+	if err != nil {
+		r.logger.Error("Error on attempt to insert record into DB: " + err.Error())
+		return err
+	}
+	err = tx.Commit()
+	if err != nil {
+		r.logger.Error("Error on commiting tx to insert new post: " + err.Error())
+		return err
+	}
+	return nil
 }
 
 // DeletePost implements service.PostsRepo.
