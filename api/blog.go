@@ -4,7 +4,11 @@ package api
 
 import (
 	"context"
+	"fmt"
+	"log/slog"
 
+	"github.com/clerk/clerk-sdk-go/v2"
+	"github.com/clerk/clerk-sdk-go/v2/user"
 	"github.com/y3g0r/modern-full-stack-blog-go/internal/service"
 )
 
@@ -22,6 +26,17 @@ func NewBlog(posts *service.Posts) *BlogApi {
 
 // CreatePost implements StrictServerInterface.
 func (b *BlogApi) CreatePost(ctx context.Context, request CreatePostRequestObject) (CreatePostResponseObject, error) {
+	claims, ok := clerk.SessionClaimsFromContext(ctx)
+	if !ok {
+		return CreatePost201JSONResponse{}, fmt.Errorf("missing authentication claims in CreatePost request context, is authentication middleware misconfigured?")
+	}
+	usr, err := user.Get(ctx, claims.Subject)
+	if err != nil {
+		return CreatePost201JSONResponse{}, err
+	}
+
+	slog.Info(fmt.Sprintf(`{"user_id": "%s", "user_banned": "%t"}`, usr.ID, usr.Banned))
+
 	post, err := b.posts.CreatePost(service.CreatePostParams{
 		Title:   request.Body.Title,
 		Content: request.Body.Content,

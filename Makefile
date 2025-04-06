@@ -4,8 +4,9 @@ generate:
 	@go generate ./...
 
 run:
-	@echo "Running..."
-	@go run cmd/server/main.go
+	@set -o allexport; \
+	if [ -f .env ]; then source .env; fi; \
+	go run cmd/server/main.go
 
 # DB
 db-up:

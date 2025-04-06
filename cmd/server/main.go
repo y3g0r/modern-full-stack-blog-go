@@ -16,6 +16,8 @@ import (
 	"github.com/y3g0r/modern-full-stack-blog-go/configs"
 	"github.com/y3g0r/modern-full-stack-blog-go/internal/repo"
 	"github.com/y3g0r/modern-full-stack-blog-go/internal/service"
+	"github.com/clerk/clerk-sdk-go/v2"
+	clerkhttp "github.com/clerk/clerk-sdk-go/v2/http"	
 )
 
 func main() {
@@ -26,6 +28,8 @@ func main() {
 	slog.SetDefault(logger)
 
 	config := configs.Load()
+
+	clerk.SetKey(config.CLERK_SK)
 
 	swagger, err := api.GetSwagger()
 	if err != nil {
@@ -71,6 +75,7 @@ func main() {
 	// Use our validation middleware to check all requests against the
 	// OpenAPI schema.
 	r.Use(middleware.OapiRequestValidator(swagger))
+	r.Use(clerkhttp.WithHeaderAuthorization())
 
 	// We now register our petStore above as the handler for the interface
 	api.HandlerFromMux(blogStictHandler, r)
