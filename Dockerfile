@@ -29,6 +29,8 @@ RUN apk add --no-cache curl && \
 # Copy the compiled binary from the builder stage
 COPY --from=builder /app/server .
 
+COPY db/migrations /migrations
+
 # Expose the port the app runs on
 EXPOSE 3000
 
