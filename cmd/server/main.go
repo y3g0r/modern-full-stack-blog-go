@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/clerk/clerk-sdk-go/v2"
+	clerkhttp "github.com/clerk/clerk-sdk-go/v2/http"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
 	"github.com/jmoiron/sqlx"
@@ -16,8 +18,6 @@ import (
 	"github.com/y3g0r/modern-full-stack-blog-go/configs"
 	"github.com/y3g0r/modern-full-stack-blog-go/internal/repo"
 	"github.com/y3g0r/modern-full-stack-blog-go/internal/service"
-	"github.com/clerk/clerk-sdk-go/v2"
-	clerkhttp "github.com/clerk/clerk-sdk-go/v2/http"	
 )
 
 func main() {
@@ -42,7 +42,8 @@ func main() {
 	swagger.Servers = nil
 
 	// TODO: get connection parameters from config
-	db, err := sqlx.Connect("postgres", "user=admin password=CHANGEME dbname=blog sslmode=disable")
+	// db, err := sqlx.Connect("postgres", "user=admin password=CHANGEME dbname=blog sslmode=disable")
+	db, err := sqlx.Connect("postgres", config.DATABASE_URL)
 	if err != nil {
 		logger.Error(err.Error())
 	}

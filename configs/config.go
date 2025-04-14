@@ -5,14 +5,16 @@ import (
 )
 
 type Config struct {
-	PORT string
-	CLERK_SK string
+	PORT         string
+	CLERK_SK     string
+	DATABASE_URL string
 }
 
 func Load() Config {
 	return Config{
-		PORT:     getEnv("PORT", "3000"),
-		CLERK_SK: getRequiredEnv("CLERK_SECRET_KEY"),
+		PORT:         getEnv("PORT", "3000"),
+		CLERK_SK:     getRequiredEnv("CLERK_SECRET_KEY"),
+		DATABASE_URL: getEnv("DATABASE_URL", "DATABASE_URL"),
 	}
 }
 
