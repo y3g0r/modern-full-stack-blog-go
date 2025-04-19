@@ -103,6 +103,7 @@ components:
           type: string
         author:
           type: string
+          readOnly: true
         tags:
           type: array
           items:

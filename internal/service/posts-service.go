@@ -13,31 +13,32 @@ type PostsRepo interface {
 }
 
 type Posts struct {
-	blogDao PostsRepo
+	postsRepo PostsRepo
 	lastId  int
 }
 
 func NewPostsService(blogDao PostsRepo) *Posts {
 	return &Posts{
-		blogDao: blogDao,
+		postsRepo: blogDao,
 	}
 }
 
 func (s *Posts) CreatePost(params CreatePostParams) (domain.Post, error) {
 	s.lastId++
 	post := domain.Post{
-		ID:      s.lastId,
-		Title:   params.Title,
-		Content: params.Content,
+		ID:        s.lastId,
+		CreatedBy: params.CreatedBy,
+		Title:     params.Title,
+		Content:   params.Content,
 	}
-	if err := s.blogDao.CreatePost(post); err != nil {
+	if err := s.postsRepo.CreatePost(post); err != nil {
 		return domain.Post{}, err
 	}
 	return post, nil
 }
 
 func (s *Posts) GetPost(id int) (domain.Post, error) {
-	post, err := s.blogDao.GetPost(id)
+	post, err := s.postsRepo.GetPost(id)
 	if err != nil {
 		return domain.Post{}, err
 	}
@@ -45,21 +46,21 @@ func (s *Posts) GetPost(id int) (domain.Post, error) {
 }
 
 func (s *Posts) UpdatePost(postId int, params UpdatePostParams) error {
-	if err := s.blogDao.UpdatePost(postId, params); err != nil {
+	if err := s.postsRepo.UpdatePost(postId, params); err != nil {
 		return err
 	}
 	return nil
 }
 
 func (s *Posts) DeletePost(id int) error {
-	if err := s.blogDao.DeletePost(id); err != nil {
+	if err := s.postsRepo.DeletePost(id); err != nil {
 		return err
 	}
 	return nil
 }
 
 func (s *Posts) GetPosts() ([]domain.Post, error) {
-	posts, err := s.blogDao.GetPosts()
+	posts, err := s.postsRepo.GetPosts()
 	if err != nil {
 		return nil, err
 	}

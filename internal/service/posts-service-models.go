@@ -1,10 +1,15 @@
 package service
 
-import "database/sql"
+import (
+	"database/sql"
+
+	"github.com/y3g0r/modern-full-stack-blog-go/internal/domain"
+)
 
 type CreatePostParams struct {
-	Title   string
-	Content *string
+	CreatedBy domain.UserId
+	Title     string
+	Content   *string
 }
 
 type UpdatePostParams struct {

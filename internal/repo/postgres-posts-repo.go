@@ -36,8 +36,8 @@ func (r *PostgresPostsRepo) CreatePost(post domain.Post) error {
 	} else {
 		content = sql.NullString{Valid: false}
 	}
-	
-	_, err = tx.Exec("INSERT INTO posts (id, title, content) VALUES ($1, $2, $3)", post.ID, post.Title, content)
+
+	_, err = tx.Exec("INSERT INTO posts (id, created_by, title, content) VALUES ($1, $2, $3, $4)", post.ID, post.CreatedBy, post.Title, content)
 	if err != nil {
 		r.logger.Error("Error on attempt to insert record into DB: " + err.Error())
 		return err
@@ -62,7 +62,7 @@ func (r *PostgresPostsRepo) GetPost(id int) (domain.Post, error) {
 
 // GetPosts implements service.PostsRepo.
 func (r *PostgresPostsRepo) GetPosts() ([]domain.Post, error) {
-	rows, err := r.db.Queryx("SELECT id, title, content FROM posts")
+	rows, err := r.db.Queryx("SELECT id, created_by, title, content FROM posts")
 	if err != nil {
 		return []domain.Post{}, err
 	}
@@ -82,9 +82,10 @@ func (r *PostgresPostsRepo) GetPosts() ([]domain.Post, error) {
 			content = &record.Content.String
 		}
 		posts = append(posts, domain.Post{
-			ID:      record.ID,
-			Title:   record.Title,
-			Content: content,
+			ID:        record.ID,
+			CreatedBy: domain.UserId(record.CreatedBy),
+			Title:     record.Title,
+			Content:   content,
 		})
 	}
 	return posts, nil
