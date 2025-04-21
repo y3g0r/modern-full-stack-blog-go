@@ -22,11 +22,22 @@ import (
 	strictnethttp "github.com/oapi-codegen/runtime/strictmiddleware/nethttp"
 )
 
+// CreateJamRequest defines model for CreateJamRequest.
+type CreateJamRequest struct {
+	EndTimestampSeconds int64   `json:"endTimestampSeconds"`
+	Location            *string `json:"location,omitempty"`
+	Name                string  `json:"name"`
+	Participants        *[]struct {
+		Email *string `json:"email,omitempty"`
+	} `json:"participants,omitempty"`
+	StartTimestampSeconds int64 `json:"startTimestampSeconds"`
+}
+
 // Jam defines model for Jam.
 type Jam struct {
 	CreatedBy           string  `json:"createdBy"`
 	EndTimestampSeconds int64   `json:"endTimestampSeconds"`
-	Id                  int     `json:"id"`
+	Id                  int64   `json:"id"`
 	Location            *string `json:"location,omitempty"`
 	Name                string  `json:"name"`
 	Participants        *[]struct {
@@ -46,6 +57,9 @@ type Post struct {
 	UpdatedAt *time.Time `json:"updatedAt,omitempty"`
 }
 
+// CreateJamJSONRequestBody defines body for CreateJam for application/json ContentType.
+type CreateJamJSONRequestBody = CreateJamRequest
+
 // CreatePostJSONRequestBody defines body for CreatePost for application/json ContentType.
 type CreatePostJSONRequestBody = Post
 
@@ -57,6 +71,9 @@ type ServerInterface interface {
 	// Get all jams
 	// (GET /api/v1/jams)
 	GetJams(w http.ResponseWriter, r *http.Request)
+	// Create a new jam
+	// (POST /api/v1/jams)
+	CreateJam(w http.ResponseWriter, r *http.Request)
 	// Get all posts
 	// (GET /api/v1/posts)
 	GetPosts(w http.ResponseWriter, r *http.Request)
@@ -81,6 +98,12 @@ type Unimplemented struct{}
 // Get all jams
 // (GET /api/v1/jams)
 func (_ Unimplemented) GetJams(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Create a new jam
+// (POST /api/v1/jams)
+func (_ Unimplemented) CreateJam(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -128,6 +151,20 @@ func (siw *ServerInterfaceWrapper) GetJams(w http.ResponseWriter, r *http.Reques
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetJams(w, r)
+	}))
+
+	for i := len(siw.HandlerMiddlewares) - 1; i >= 0; i-- {
+		handler = siw.HandlerMiddlewares[i](handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateJam operation middleware
+func (siw *ServerInterfaceWrapper) CreateJam(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateJam(w, r)
 	}))
 
 	for i := len(siw.HandlerMiddlewares) - 1; i >= 0; i-- {
@@ -357,6 +394,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Get(options.BaseURL+"/api/v1/jams", wrapper.GetJams)
 	})
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/v1/jams", wrapper.CreateJam)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/v1/posts", wrapper.GetPosts)
 	})
 	r.Group(func(r chi.Router) {
@@ -395,6 +435,33 @@ type GetJams401Response struct {
 }
 
 func (response GetJams401Response) VisitGetJamsResponse(w http.ResponseWriter) error {
+	w.WriteHeader(401)
+	return nil
+}
+
+type CreateJamRequestObject struct {
+	Body *CreateJamJSONRequestBody
+}
+
+type CreateJamResponseObject interface {
+	VisitCreateJamResponse(w http.ResponseWriter) error
+}
+
+type CreateJam201JSONResponse struct {
+	Id int64 `json:"id"`
+}
+
+func (response CreateJam201JSONResponse) VisitCreateJamResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateJam401Response struct {
+}
+
+func (response CreateJam401Response) VisitCreateJamResponse(w http.ResponseWriter) error {
 	w.WriteHeader(401)
 	return nil
 }
@@ -490,6 +557,9 @@ type StrictServerInterface interface {
 	// Get all jams
 	// (GET /api/v1/jams)
 	GetJams(ctx context.Context, request GetJamsRequestObject) (GetJamsResponseObject, error)
+	// Create a new jam
+	// (POST /api/v1/jams)
+	CreateJam(ctx context.Context, request CreateJamRequestObject) (CreateJamResponseObject, error)
 	// Get all posts
 	// (GET /api/v1/posts)
 	GetPosts(ctx context.Context, request GetPostsRequestObject) (GetPostsResponseObject, error)
@@ -553,6 +623,37 @@ func (sh *strictHandler) GetJams(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetJamsResponseObject); ok {
 		if err := validResponse.VisitGetJamsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateJam operation middleware
+func (sh *strictHandler) CreateJam(w http.ResponseWriter, r *http.Request) {
+	var request CreateJamRequestObject
+
+	var body CreateJamJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateJam(ctx, request.(CreateJamRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateJam")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateJamResponseObject); ok {
+		if err := validResponse.VisitCreateJamResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -703,18 +804,19 @@ func (sh *strictHandler) UpdatePost(w http.ResponseWriter, r *http.Request, id i
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

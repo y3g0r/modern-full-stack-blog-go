@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/clerk/clerk-sdk-go/v2"
@@ -15,8 +16,10 @@ import (
 )
 
 type BlogApi struct {
-	posts *service.Posts
-	jams  []Jam
+	posts     *service.Posts
+	jams      []Jam
+	nextJamId int64
+	lock      sync.Mutex
 }
 
 var _ StrictServerInterface = (*BlogApi)(nil)
@@ -43,6 +46,7 @@ func NewBlog(posts *service.Posts) *BlogApi {
 				EndTimestampSeconds:   time.Now().Add(duration).Unix(),
 			},
 		},
+		nextJamId: 2,
 	}
 }
 
@@ -65,6 +69,31 @@ func (b *BlogApi) GetJams(ctx context.Context, request GetJamsRequestObject) (Ge
 	}
 
 	return GetJams200JSONResponse(result), nil
+}
+
+// CreateJam implements StrictServerInterface.
+func (b *BlogApi) CreateJam(ctx context.Context, request CreateJamRequestObject) (CreateJamResponseObject, error) {
+	claims, ok := clerk.SessionClaimsFromContext(ctx)
+	if !ok {
+		return CreateJam401Response{}, nil
+	}
+
+	b.lock.Lock()
+	defer b.lock.Unlock()
+
+	newJam := Jam{
+		Id:                    b.nextJamId,
+		CreatedBy:             claims.Subject,
+		Name:                  request.Body.Name,
+		StartTimestampSeconds: request.Body.StartTimestampSeconds,
+		EndTimestampSeconds:   request.Body.EndTimestampSeconds,
+		Location:              request.Body.Location,
+		Participants:          request.Body.Participants,
+	}
+	b.nextJamId += 1
+
+	b.jams = append(b.jams, newJam)
+	return CreateJam201JSONResponse{Id: newJam.Id}, nil
 }
 
 // CreatePost implements StrictServerInterface.
