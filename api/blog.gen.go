@@ -22,6 +22,19 @@ import (
 	strictnethttp "github.com/oapi-codegen/runtime/strictmiddleware/nethttp"
 )
 
+// Jam defines model for Jam.
+type Jam struct {
+	CreatedBy           string  `json:"createdBy"`
+	EndTimestampSeconds int64   `json:"endTimestampSeconds"`
+	Id                  int     `json:"id"`
+	Location            *string `json:"location,omitempty"`
+	Name                string  `json:"name"`
+	Participants        *[]struct {
+		Email *string `json:"email,omitempty"`
+	} `json:"participants,omitempty"`
+	StartTimestampSeconds int64 `json:"startTimestampSeconds"`
+}
+
 // Post defines model for Post.
 type Post struct {
 	Author    *string    `json:"author,omitempty"`
@@ -41,6 +54,9 @@ type UpdatePostJSONRequestBody = Post
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// Get all jams
+	// (GET /api/v1/jams)
+	GetJams(w http.ResponseWriter, r *http.Request)
 	// Get all posts
 	// (GET /api/v1/posts)
 	GetPosts(w http.ResponseWriter, r *http.Request)
@@ -61,6 +77,12 @@ type ServerInterface interface {
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
 
 type Unimplemented struct{}
+
+// Get all jams
+// (GET /api/v1/jams)
+func (_ Unimplemented) GetJams(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
 
 // Get all posts
 // (GET /api/v1/posts)
@@ -100,6 +122,20 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// GetJams operation middleware
+func (siw *ServerInterfaceWrapper) GetJams(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetJams(w, r)
+	}))
+
+	for i := len(siw.HandlerMiddlewares) - 1; i >= 0; i-- {
+		handler = siw.HandlerMiddlewares[i](handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // GetPosts operation middleware
 func (siw *ServerInterfaceWrapper) GetPosts(w http.ResponseWriter, r *http.Request) {
@@ -318,6 +354,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	}
 
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/jams", wrapper.GetJams)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/v1/posts", wrapper.GetPosts)
 	})
 	r.Group(func(r chi.Router) {
@@ -334,6 +373,22 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 
 	return r
+}
+
+type GetJamsRequestObject struct {
+}
+
+type GetJamsResponseObject interface {
+	VisitGetJamsResponse(w http.ResponseWriter) error
+}
+
+type GetJams200JSONResponse []Jam
+
+func (response GetJams200JSONResponse) VisitGetJamsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
 }
 
 type GetPostsRequestObject struct {
@@ -424,6 +479,9 @@ func (response UpdatePost200JSONResponse) VisitUpdatePostResponse(w http.Respons
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
+	// Get all jams
+	// (GET /api/v1/jams)
+	GetJams(ctx context.Context, request GetJamsRequestObject) (GetJamsResponseObject, error)
 	// Get all posts
 	// (GET /api/v1/posts)
 	GetPosts(ctx context.Context, request GetPostsRequestObject) (GetPostsResponseObject, error)
@@ -468,6 +526,30 @@ type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
 	options     StrictHTTPServerOptions
+}
+
+// GetJams operation middleware
+func (sh *strictHandler) GetJams(w http.ResponseWriter, r *http.Request) {
+	var request GetJamsRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetJams(ctx, request.(GetJamsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetJams")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetJamsResponseObject); ok {
+		if err := validResponse.VisitGetJamsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
 }
 
 // GetPosts operation middleware
@@ -613,16 +695,18 @@ func (sh *strictHandler) UpdatePost(w http.ResponseWriter, r *http.Request, id i
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/8SUTW/bMAyG/4rA7ejG7sfJt35gQzFsDTbs1PbAWIyjVpY0ie5gBP7vg2S3q+NgWw9d",
-	"T3YoheT78KW3UNnGWUOGA5RbCNWGGkyvSxs4Pp23jjwrSlFseWN9fPOE8sroDkr2LWXAnSMoIbBXpoY+",
-	"g8oaJpNyzM88IZM8Tadr6xtkKEEi0wGrhmBPOiWfZVKGqSYf44x16kwxNWFvsTGA3mOXfivWtPdm6+TL",
-	"2uoz8PSjVZ4klNdj5tuna3Z1RxVDH+8ps7YxraRQeeVYWQMlfLRihdU9GSnW1oszbWtxurwUa28bcQOf",
-	"rSRvxIdW64NvjNW9+EpYsVh6GzOHGxAra+/FqhMXaBRpcdbWOhNHxdHJAp6kPuZZt1qLkPKstK0hgwfy",
-	"YeikWBSLwwjBOjLoFJRwvCgWx5CBQ94ktDk6lT8c5s6GwS81JVTRIRgVXcqoiXiZLkQ4wVkTBu8cFUV8",
-	"PPMFOqdVlf6Z34XYxqMFJxN972kNJbzLf5s1H52aJ5vOhhyBT0FffUrTCm3ToO+GLgVqLQYtfQZuNPxU",
-	"zHlyaqoyzJoCn1nZvUjJ3wVMnRQ3qp/RO3xRzene7t+eHfsqCbd70A0I5A6/ISpQGPqZIKbziUPyrZL9",
-	"4HlNTHO4Fyk+wnXosSEmH6C83oKKpaPzIAODTepbwi6l7JnimbrbGcKT+QZ+seJ8ZDoVODQnMImLG3Z5",
-	"EW3yJ8v/JxXFK5jvX7Zlh4RDrjZzFt/TR/R1cbzlGr4B/QHpzgD6vv8VAAD//0Qt0WS/BwAA",
+	"H4sIAAAAAAAC/8SVz1PrNhDH/xWN2qOJw4/pwTcC0w50WjKlPQGHjbVJBLKkSmveZDL+399ISiCODO/x",
+	"3gCn2JK12u9nd79Z89o01mjU5Hm15r5eYgPx8RKa8GOdsehIYlysHQKhmKzCC60s8op7clIveFdw1OJf",
+	"2aAnaOw11kaLeGhuXAPEKy41/XbCi+1BqQkX6MJJKXYC7qwrUwNJowev09Dg4IYFR7KWFjaqJGHjczHY",
+	"gFQDAbqnDM3sHmvizwvgHKzCuydw9ENiu4I7/L+VDgWvboLyYgfrRtVLFwwzvhtIeGo85ZKhpaVx4ckh",
+	"iCutVrwi12KRQ6yNJtQ0CHiT7yn1FAsgPCAZ08+OvFRhgkW/RtnJffQkSQ3XvbXibWnt1SJFzmmG76Se",
+	"mxBWoK+dtKkp+R+GzaB+QC3Y3Dg2UWbBTqcXbO5Mw275X0ag0+z3VqmDa4L6gf2DUBObOhMi+1vOZsY8",
+	"sNmKnYOWqNikXaiCHY2PTkb8Seo2zrxVivkYZ6bMghf8EZ1PmYxH49FhgGAsarCSV/x4NB4d8zAOtIxo",
+	"S7CyfDws7yGhXmAkFRokTtmFCJKQLsN+QOOt0T51ztF4HA3guSvAWiXTeJb3Ps1o8o9ePX91OOcV/6V8",
+	"dppyYzNl8JiswoF2n/LVn7FUvm0acKuUIwOlWBQStrbKrPH0qrRp/OAjtMUB/BlxSUuws80o98WcxRmM",
+	"t6QuRk8TI1ZvUvJtAf0ZCV7RZfQO33Rn35GGfSE3ybsBdAmB2OOXVhkwjV8ixLxDyrUUXZpmhYQ53PO4",
+	"voFrwUGDhM7z6mbNZbg6zNTWrKtk4n1KxY7iTN1dhvAk95a/DTvbMO0LTMkxiOKCd1ychzZ5reU/SMX4",
+	"HZrve6Zlj4QFqpc5i//i38P74vjMMfwE+gnpXgG6rvsaAAD//2mN0jpYCgAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

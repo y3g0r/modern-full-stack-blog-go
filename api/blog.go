@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/clerk/clerk-sdk-go/v2"
 	"github.com/clerk/clerk-sdk-go/v2/user"
@@ -23,6 +24,20 @@ func NewBlog(posts *service.Posts) *BlogApi {
 	return &BlogApi{
 		posts: posts,
 	}
+}
+
+// GetJams implements StrictServerInterface.
+func (b *BlogApi) GetJams(ctx context.Context, request GetJamsRequestObject) (GetJamsResponseObject, error) {
+	duration, _ := time.ParseDuration("2h")
+	return GetJams200JSONResponse([]Jam{
+		{
+			Id:                    1,
+			CreatedBy:             "dummy from backend",
+			Name:                  "Hardcoded in API",
+			StartTimestampSeconds: time.Now().Unix(),
+			EndTimestampSeconds:   time.Now().Add(duration).Unix(),
+		},
+	}), nil
 }
 
 // CreatePost implements StrictServerInterface.

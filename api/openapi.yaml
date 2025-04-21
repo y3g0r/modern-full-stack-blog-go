@@ -88,6 +88,19 @@ paths:
       responses:
         '204':
           description: No Content
+  /api/v1/jams:
+    get:
+      summary: Get all jams
+      operationId: getJams
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: 
+                  $ref: '#/components/schemas/Jam'
 components:
   schemas:
     Post:
@@ -114,4 +127,34 @@ components:
         updatedAt:
           type: string
           format: date-time
+    Jam:
+      type: object
+      required: 
+        - id
+        - createdBy
+        - name
+        - startTimestampSeconds
+        - endTimestampSeconds
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        startTimestampSeconds:
+          type: integer
+          format: int64
+        endTimestampSeconds:
+          type: integer
+          format: int64
+        location:
+          type: string
+        createdBy:
+          type: string
+        participants:
+          type: array
+          items:
+            type: object
+            properties:
+              email:
+                type: string
   
