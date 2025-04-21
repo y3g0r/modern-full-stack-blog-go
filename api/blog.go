@@ -44,6 +44,10 @@ func NewBlog(posts *service.Posts) *BlogApi {
 				Name:                  "Hardcoded in API",
 				StartTimestampSeconds: time.Now().Unix(),
 				EndTimestampSeconds:   time.Now().Add(duration).Unix(),
+				Location:              "dummy location",
+				Participants: []Participant{
+					{Email: "dummy@email.com"},
+				},
 			},
 		},
 		nextJamId: 2,
@@ -65,6 +69,8 @@ func (b *BlogApi) GetJams(ctx context.Context, request GetJamsRequestObject) (Ge
 			Name:                  jam.Name,
 			StartTimestampSeconds: jam.StartTimestampSeconds,
 			EndTimestampSeconds:   jam.EndTimestampSeconds,
+			Location:              jam.Location,
+			Participants:          jam.Participants,
 		})
 	}
 

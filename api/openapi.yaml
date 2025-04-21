@@ -152,6 +152,13 @@ components:
         updatedAt:
           type: string
           format: date-time
+    Participant:
+      type: object
+      properties:
+        email:
+          type: string
+      required:
+        - email
     Jam:
       type: object
       required: 
@@ -160,6 +167,8 @@ components:
         - name
         - startTimestampSeconds
         - endTimestampSeconds
+        - location
+        - participants
       properties:
         id:
           type: integer
@@ -179,16 +188,15 @@ components:
         participants:
           type: array
           items:
-            type: object
-            properties:
-              email:
-                type: string
+            $ref: "#/components/schemas/Participant"
     CreateJamRequest:
       type: object
       required: 
         - name
         - startTimestampSeconds
         - endTimestampSeconds
+        - location
+        - participants
       properties:
         name:
           type: string
@@ -203,8 +211,4 @@ components:
         participants:
           type: array
           items:
-            type: object
-            properties:
-              email:
-                type: string
-  
+            $ref: "#/components/schemas/Participant"

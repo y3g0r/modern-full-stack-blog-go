@@ -24,26 +24,27 @@ import (
 
 // CreateJamRequest defines model for CreateJamRequest.
 type CreateJamRequest struct {
-	EndTimestampSeconds int64   `json:"endTimestampSeconds"`
-	Location            *string `json:"location,omitempty"`
-	Name                string  `json:"name"`
-	Participants        *[]struct {
-		Email *string `json:"email,omitempty"`
-	} `json:"participants,omitempty"`
-	StartTimestampSeconds int64 `json:"startTimestampSeconds"`
+	EndTimestampSeconds   int64         `json:"endTimestampSeconds"`
+	Location              string        `json:"location"`
+	Name                  string        `json:"name"`
+	Participants          []Participant `json:"participants"`
+	StartTimestampSeconds int64         `json:"startTimestampSeconds"`
 }
 
 // Jam defines model for Jam.
 type Jam struct {
-	CreatedBy           string  `json:"createdBy"`
-	EndTimestampSeconds int64   `json:"endTimestampSeconds"`
-	Id                  int64   `json:"id"`
-	Location            *string `json:"location,omitempty"`
-	Name                string  `json:"name"`
-	Participants        *[]struct {
-		Email *string `json:"email,omitempty"`
-	} `json:"participants,omitempty"`
-	StartTimestampSeconds int64 `json:"startTimestampSeconds"`
+	CreatedBy             string        `json:"createdBy"`
+	EndTimestampSeconds   int64         `json:"endTimestampSeconds"`
+	Id                    int64         `json:"id"`
+	Location              string        `json:"location"`
+	Name                  string        `json:"name"`
+	Participants          []Participant `json:"participants"`
+	StartTimestampSeconds int64         `json:"startTimestampSeconds"`
+}
+
+// Participant defines model for Participant.
+type Participant struct {
+	Email string `json:"email"`
 }
 
 // Post defines model for Post.
@@ -804,19 +805,19 @@ func (sh *strictHandler) UpdatePost(w http.ResponseWriter, r *http.Request, id i
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
