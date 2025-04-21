@@ -16,28 +16,55 @@ import (
 
 type BlogApi struct {
 	posts *service.Posts
+	jams  []Jam
 }
 
 var _ StrictServerInterface = (*BlogApi)(nil)
 
+var duration time.Duration
+
+func init() {
+	var err error
+	duration, err = time.ParseDuration("2h")
+	if err != nil {
+		panic(err)
+	}
+}
+
 func NewBlog(posts *service.Posts) *BlogApi {
 	return &BlogApi{
 		posts: posts,
+		jams: []Jam{
+			{
+				Id:                    1,
+				CreatedBy:             "dummy",
+				Name:                  "Hardcoded in API",
+				StartTimestampSeconds: time.Now().Unix(),
+				EndTimestampSeconds:   time.Now().Add(duration).Unix(),
+			},
+		},
 	}
 }
 
 // GetJams implements StrictServerInterface.
 func (b *BlogApi) GetJams(ctx context.Context, request GetJamsRequestObject) (GetJamsResponseObject, error) {
-	duration, _ := time.ParseDuration("2h")
-	return GetJams200JSONResponse([]Jam{
-		{
-			Id:                    1,
-			CreatedBy:             "dummy from backend",
-			Name:                  "Hardcoded in API",
-			StartTimestampSeconds: time.Now().Unix(),
-			EndTimestampSeconds:   time.Now().Add(duration).Unix(),
-		},
-	}), nil
+	claims, ok := clerk.SessionClaimsFromContext(ctx)
+	if !ok {
+		return GetJams401Response{}, nil
+	}
+
+	result := []Jam{}
+	for _, jam := range b.jams {
+		result = append(result, Jam{
+			Id:                    jam.Id,
+			CreatedBy:             claims.Subject,
+			Name:                  jam.Name,
+			StartTimestampSeconds: jam.StartTimestampSeconds,
+			EndTimestampSeconds:   jam.EndTimestampSeconds,
+		})
+	}
+
+	return GetJams200JSONResponse(result), nil
 }
 
 // CreatePost implements StrictServerInterface.

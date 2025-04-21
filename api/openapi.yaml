@@ -93,6 +93,8 @@ paths:
       summary: Get all jams
       operationId: getJams
       responses:
+        '401':
+          description: Unauthorized
         '200':
           description: OK
           content:
