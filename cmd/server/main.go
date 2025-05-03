@@ -52,8 +52,12 @@ func main() {
 	// postsRepo := repo.NewInMemoryPostsRepo()
 	postsService := service.NewPostsService(postsRepo)
 
+
+	jamsRepo := repo.NewInMemoryJams()
+	jamsService := service.NewJams(jamsRepo)
+
 	// Create an instance of our handler which satisfies the generated interface
-	blogApi := api.NewBlog(postsService)
+	blogApi := api.NewBlog(postsService, jamsService)
 
 	blogStictHandler := api.NewStrictHandler(blogApi, nil)
 

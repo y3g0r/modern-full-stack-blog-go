@@ -6,7 +6,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"sync"
+	"strconv"
 	"time"
 
 	"github.com/clerk/clerk-sdk-go/v2"
@@ -16,41 +16,16 @@ import (
 )
 
 type BlogApi struct {
-	posts     *service.Posts
-	jams      []Jam
-	nextJamId int64
-	lock      sync.Mutex
+	posts       *service.Posts
+	jamsService *service.Jams
 }
 
 var _ StrictServerInterface = (*BlogApi)(nil)
 
-var duration time.Duration
-
-func init() {
-	var err error
-	duration, err = time.ParseDuration("2h")
-	if err != nil {
-		panic(err)
-	}
-}
-
-func NewBlog(posts *service.Posts) *BlogApi {
+func NewBlog(posts *service.Posts, jams *service.Jams) *BlogApi {
 	return &BlogApi{
-		posts: posts,
-		jams: []Jam{
-			{
-				Id:                    1,
-				CreatedBy:             "dummy",
-				Name:                  "Hardcoded in API",
-				StartTimestampSeconds: time.Now().Unix(),
-				EndTimestampSeconds:   time.Now().Add(duration).Unix(),
-				Location:              "dummy location",
-				Participants: []Participant{
-					{Email: "dummy@email.com"},
-				},
-			},
-		},
-		nextJamId: 2,
+		posts:       posts,
+		jamsService: jams,
 	}
 }
 
@@ -61,20 +36,38 @@ func (b *BlogApi) GetJams(ctx context.Context, request GetJamsRequestObject) (Ge
 		return GetJams401Response{}, nil
 	}
 
-	result := []Jam{}
-	for _, jam := range b.jams {
-		result = append(result, Jam{
-			Id:                    jam.Id,
-			CreatedBy:             claims.Subject,
-			Name:                  jam.Name,
-			StartTimestampSeconds: jam.StartTimestampSeconds,
-			EndTimestampSeconds:   jam.EndTimestampSeconds,
-			Location:              jam.Location,
-			Participants:          jam.Participants,
-		})
+	result, err := b.jamsService.GetAllJams(ctx, service.GetAllJamsParams{
+		UserId: claims.Subject,
+	})
+	if err != nil {
+		return GetJams200JSONResponse{}, err
 	}
 
-	return GetJams200JSONResponse(result), nil
+	response := make([]Jam, len(result.Jams))
+	for i, jam := range result.Jams {
+		id, err := strconv.ParseInt(jam.ID, 10, 64)
+		if err != nil {
+			return GetJams200JSONResponse{}, err
+		}
+		participants := make([]Participant, len(jam.Participants))
+		for i, p := range jam.Participants {
+			participants[i] = Participant{
+				Email: p.EmailAddress,
+			}
+		}
+
+		response[i] = Jam{
+			Id:                    id,
+			CreatedBy:             jam.CreatedBy,
+			Name:                  jam.Name,
+			StartTimestampSeconds: jam.StartTimestamp.Unix(),
+			EndTimestampSeconds:   jam.EndTimestamp.Unix(),
+			Location:              "",
+			Participants:          participants,
+		}
+	}
+
+	return GetJams200JSONResponse(response), nil
 }
 
 // CreateJam implements StrictServerInterface.
@@ -84,22 +77,27 @@ func (b *BlogApi) CreateJam(ctx context.Context, request CreateJamRequestObject)
 		return CreateJam401Response{}, nil
 	}
 
-	b.lock.Lock()
-	defer b.lock.Unlock()
-
-	newJam := Jam{
-		Id:                    b.nextJamId,
-		CreatedBy:             claims.Subject,
-		Name:                  request.Body.Name,
-		StartTimestampSeconds: request.Body.StartTimestampSeconds,
-		EndTimestampSeconds:   request.Body.EndTimestampSeconds,
-		Location:              request.Body.Location,
-		Participants:          request.Body.Participants,
+	participantsEmails := make([]string, len(request.Body.Participants))
+	for i, p := range request.Body.Participants {
+		participantsEmails[i] = p.Email
 	}
-	b.nextJamId += 1
 
-	b.jams = append(b.jams, newJam)
-	return CreateJam201JSONResponse{Id: newJam.Id}, nil
+	result, err := b.jamsService.CreateJam(ctx, service.CreateJamParams{
+		CreatedByUserId:           claims.Subject,
+		Name:                      request.Body.Name,
+		StartTimestamp:            time.Unix(request.Body.StartTimestampSeconds, 0),
+		EndTimestamp:              time.Unix(request.Body.EndTimestampSeconds, 0),
+		Location:                  request.Body.Location,
+		ParticipantEmailAddresses: participantsEmails,
+	})
+	if err != nil {
+		return CreateJam201JSONResponse{}, err
+	}
+	id, err := strconv.ParseInt(result.JamId, 10, 64)
+	if err != nil {
+		return CreateJam201JSONResponse{}, err
+	}
+	return CreateJam201JSONResponse{Id: id}, err
 }
 
 // CreatePost implements StrictServerInterface.

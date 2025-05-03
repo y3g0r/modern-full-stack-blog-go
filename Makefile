@@ -25,6 +25,11 @@ db-migrate:
 		-path db/migrations \
 		up
 
+wait2:
+	sleep 2
+
+db-refresh: db-down db-up wait2 db-migrate
+
 # Docker
 docker-image:
 	@echo "Building docker image..."
