@@ -62,7 +62,7 @@ func (b *BlogApi) GetJams(ctx context.Context, request GetJamsRequestObject) (Ge
 			Name:                  jam.Name,
 			StartTimestampSeconds: jam.StartTimestamp.Unix(),
 			EndTimestampSeconds:   jam.EndTimestamp.Unix(),
-			Location:              "",
+			Location:              jam.Location,
 			Participants:          participants,
 		}
 	}
