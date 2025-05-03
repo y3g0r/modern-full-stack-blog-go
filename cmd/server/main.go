@@ -52,14 +52,13 @@ func main() {
 	// postsRepo := repo.NewInMemoryPostsRepo()
 	postsService := service.NewPostsService(postsRepo)
 
-
 	jamsRepo := repo.NewInMemoryJams()
 	jamsService := service.NewJams(jamsRepo)
 
 	// Create an instance of our handler which satisfies the generated interface
-	blogApi := api.NewBlog(postsService, jamsService)
+	restApi := api.NewApi(postsService, jamsService)
 
-	blogStictHandler := api.NewStrictHandler(blogApi, nil)
+	stictHandler := api.NewStrictHandler(restApi, nil)
 
 	// This is how you set up a basic chi router
 	r := chi.NewRouter()
@@ -83,7 +82,7 @@ func main() {
 	r.Use(clerkhttp.WithHeaderAuthorization())
 
 	// We now register our petStore above as the handler for the interface
-	api.HandlerFromMux(blogStictHandler, r)
+	api.HandlerFromMux(stictHandler, r)
 
 	addr := net.JoinHostPort("0.0.0.0", config.PORT)
 

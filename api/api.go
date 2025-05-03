@@ -15,22 +15,22 @@ import (
 	"github.com/y3g0r/modern-full-stack-blog-go/internal/service"
 )
 
-type BlogApi struct {
+type Api struct {
 	posts       *service.Posts
 	jamsService *service.Jams
 }
 
-var _ StrictServerInterface = (*BlogApi)(nil)
+var _ StrictServerInterface = (*Api)(nil)
 
-func NewBlog(posts *service.Posts, jams *service.Jams) *BlogApi {
-	return &BlogApi{
+func NewApi(posts *service.Posts, jams *service.Jams) *Api {
+	return &Api{
 		posts:       posts,
 		jamsService: jams,
 	}
 }
 
 // GetJams implements StrictServerInterface.
-func (b *BlogApi) GetJams(ctx context.Context, request GetJamsRequestObject) (GetJamsResponseObject, error) {
+func (b *Api) GetJams(ctx context.Context, request GetJamsRequestObject) (GetJamsResponseObject, error) {
 	claims, ok := clerk.SessionClaimsFromContext(ctx)
 	if !ok {
 		return GetJams401Response{}, nil
@@ -71,7 +71,7 @@ func (b *BlogApi) GetJams(ctx context.Context, request GetJamsRequestObject) (Ge
 }
 
 // CreateJam implements StrictServerInterface.
-func (b *BlogApi) CreateJam(ctx context.Context, request CreateJamRequestObject) (CreateJamResponseObject, error) {
+func (b *Api) CreateJam(ctx context.Context, request CreateJamRequestObject) (CreateJamResponseObject, error) {
 	claims, ok := clerk.SessionClaimsFromContext(ctx)
 	if !ok {
 		return CreateJam401Response{}, nil
@@ -101,7 +101,7 @@ func (b *BlogApi) CreateJam(ctx context.Context, request CreateJamRequestObject)
 }
 
 // CreatePost implements StrictServerInterface.
-func (b *BlogApi) CreatePost(ctx context.Context, request CreatePostRequestObject) (CreatePostResponseObject, error) {
+func (b *Api) CreatePost(ctx context.Context, request CreatePostRequestObject) (CreatePostResponseObject, error) {
 	claims, ok := clerk.SessionClaimsFromContext(ctx)
 	if !ok {
 		return CreatePost201JSONResponse{}, fmt.Errorf("missing authentication claims in CreatePost request context, is authentication middleware misconfigured?")
@@ -127,19 +127,19 @@ func (b *BlogApi) CreatePost(ctx context.Context, request CreatePostRequestObjec
 }
 
 // DeletePost implements StrictServerInterface.
-func (b *BlogApi) DeletePost(ctx context.Context, request DeletePostRequestObject) (DeletePostResponseObject, error) {
+func (b *Api) DeletePost(ctx context.Context, request DeletePostRequestObject) (DeletePostResponseObject, error) {
 	err := b.posts.DeletePost(request.Id)
 
 	return DeletePost204Response{}, err
 }
 
 // GetPost implements StrictServerInterface.
-func (b *BlogApi) GetPost(ctx context.Context, request GetPostRequestObject) (GetPostResponseObject, error) {
+func (b *Api) GetPost(ctx context.Context, request GetPostRequestObject) (GetPostResponseObject, error) {
 	panic("unimplemented")
 }
 
 // GetPosts implements StrictServerInterface.
-func (b *BlogApi) GetPosts(ctx context.Context, request GetPostsRequestObject) (GetPostsResponseObject, error) {
+func (b *Api) GetPosts(ctx context.Context, request GetPostsRequestObject) (GetPostsResponseObject, error) {
 	postList := make([]Post, 0)
 	posts, err := b.posts.GetPosts()
 	if err != nil {
@@ -159,6 +159,6 @@ func (b *BlogApi) GetPosts(ctx context.Context, request GetPostsRequestObject) (
 }
 
 // UpdatePost implements StrictServerInterface.
-func (b *BlogApi) UpdatePost(ctx context.Context, request UpdatePostRequestObject) (UpdatePostResponseObject, error) {
+func (b *Api) UpdatePost(ctx context.Context, request UpdatePostRequestObject) (UpdatePostResponseObject, error) {
 	panic("unimplemented")
 }
