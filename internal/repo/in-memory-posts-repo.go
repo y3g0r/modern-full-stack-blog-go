@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/y3g0r/modern-full-stack-blog-go/internal/domain"
-	"github.com/y3g0r/modern-full-stack-blog-go/internal/service"
 )
 
 type InMemoryPostsRepo struct {
@@ -52,7 +51,7 @@ func (dao *InMemoryPostsRepo) GetPost(id int) (domain.Post, error) {
 	}, nil
 }
 
-func (dao *InMemoryPostsRepo) UpdatePost(postId int, params service.UpdatePostParams) error {
+func (dao *InMemoryPostsRepo) UpdatePost(postId int, params UpdatePostParams) error {
 	var post PostRecord
 	var exists bool
 	if post, exists = dao.posts[postId]; !exists {

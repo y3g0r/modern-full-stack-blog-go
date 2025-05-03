@@ -2,19 +2,20 @@ package service
 
 import (
 	"github.com/y3g0r/modern-full-stack-blog-go/internal/domain"
+	"github.com/y3g0r/modern-full-stack-blog-go/internal/repo"
 )
 
 type PostsRepo interface {
 	CreatePost(post domain.Post) error
 	GetPost(id int) (domain.Post, error)
-	UpdatePost(postId int, params UpdatePostParams) error
+	UpdatePost(postId int, params repo.UpdatePostParams) error
 	DeletePost(id int) error
 	GetPosts() ([]domain.Post, error)
 }
 
 type Posts struct {
 	postsRepo PostsRepo
-	lastId  int
+	lastId    int
 }
 
 func NewPostsService(blogDao PostsRepo) *Posts {
@@ -46,7 +47,11 @@ func (s *Posts) GetPost(id int) (domain.Post, error) {
 }
 
 func (s *Posts) UpdatePost(postId int, params UpdatePostParams) error {
-	if err := s.postsRepo.UpdatePost(postId, params); err != nil {
+	updateParams := repo.UpdatePostParams{
+		Title:   params.Title,
+		Content: params.Content,
+	}
+	if err := s.postsRepo.UpdatePost(postId, updateParams); err != nil {
 		return err
 	}
 	return nil

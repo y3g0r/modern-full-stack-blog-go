@@ -8,11 +8,12 @@ import (
 
 	"github.com/clerk/clerk-sdk-go/v2/user"
 	"github.com/y3g0r/modern-full-stack-blog-go/internal/domain"
+	"github.com/y3g0r/modern-full-stack-blog-go/internal/repo"
 )
 
 type JamsRepository interface {
 	CreateJam(context.Context, domain.Jam) error
-	GetAllJams(context.Context) ([]domain.Jam, error)
+	GetAllJams(context.Context, repo.GetAllJamsParams) ([]domain.Jam, error)
 }
 
 type Jams struct {
@@ -83,7 +84,15 @@ type GetAllJamsResult struct {
 }
 
 func (j *Jams) GetAllJams(ctx context.Context, p GetAllJamsParams) (GetAllJamsResult, error) {
-	jams, err := j.repo.GetAllJams(ctx)
+	// TODO: clean architecture, use interface & application types
+	usr, err := user.Get(ctx, p.UserId)
+	if err != nil {
+		return GetAllJamsResult{}, err
+	}
+
+	jams, err := j.repo.GetAllJams(ctx, repo.GetAllJamsParams{
+		UserEmailAddress: usr.EmailAddresses[0].EmailAddress,  // FIXME
+	})
 	if err != nil {
 		return GetAllJamsResult{}, err
 	}

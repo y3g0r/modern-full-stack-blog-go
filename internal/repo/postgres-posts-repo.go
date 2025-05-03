@@ -6,7 +6,6 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/y3g0r/modern-full-stack-blog-go/internal/domain"
-	"github.com/y3g0r/modern-full-stack-blog-go/internal/service"
 )
 
 type PostgresPostsRepo struct {
@@ -93,6 +92,6 @@ func (r *PostgresPostsRepo) GetPosts() ([]domain.Post, error) {
 }
 
 // UpdatePost implements service.PostsRepo.
-func (r *PostgresPostsRepo) UpdatePost(postId int, params service.UpdatePostParams) error {
+func (r *PostgresPostsRepo) UpdatePost(postId int, params UpdatePostParams) error {
 	panic("unimplemented")
 }
