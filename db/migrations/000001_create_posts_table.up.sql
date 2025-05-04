@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS posts (
 
 CREATE TABLE IF NOT EXISTS jams (
    id serial PRIMARY KEY,
+   created_by VARCHAR(254),
    name TEXT,
    start_timestamp TIMESTAMP,
    end_timestamp TIMESTAMP,

@@ -52,7 +52,8 @@ func main() {
 	// postsRepo := repo.NewInMemoryPostsRepo()
 	postsService := service.NewPostsService(postsRepo)
 
-	jamsRepo := repo.NewInMemoryJams()
+	// jamsRepo := repo.NewInMemoryJams()
+	jamsRepo := repo.NewPostgresJamsRepo(db, logger)
 	jamsService := service.NewJams(jamsRepo)
 
 	// Create an instance of our handler which satisfies the generated interface

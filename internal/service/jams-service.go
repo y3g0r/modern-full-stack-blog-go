@@ -91,7 +91,7 @@ func (j *Jams) GetAllJams(ctx context.Context, p GetAllJamsParams) (GetAllJamsRe
 	}
 
 	jams, err := j.repo.GetAllJams(ctx, repo.GetAllJamsParams{
-		UserEmailAddress: usr.EmailAddresses[0].EmailAddress,  // FIXME
+		UserEmailAddress: usr.EmailAddresses[0].EmailAddress, // FIXME
 	})
 	if err != nil {
 		return GetAllJamsResult{}, err
