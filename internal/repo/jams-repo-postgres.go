@@ -125,7 +125,7 @@ func (r *PostgresJamsRepo) getParticipantsByJamIDs(ctx context.Context, ids []in
 		r.logger.Error("Error running select participants by jam ids query: " + err.Error())
 		return []ParticipantRecord{}, err
 	}
-	r.logger.Info("Fetched participants by Jam IDs: " + fmt.Sprint(participants))
+	r.logger.Debug("Fetched participants by Jam IDs: " + fmt.Sprint(participants))
 	return participants, nil
 }
 

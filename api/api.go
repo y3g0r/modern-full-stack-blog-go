@@ -5,12 +5,10 @@ package api
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"strconv"
 	"time"
 
 	"github.com/clerk/clerk-sdk-go/v2"
-	"github.com/clerk/clerk-sdk-go/v2/user"
 	"github.com/y3g0r/modern-full-stack-blog-go/internal/domain"
 	"github.com/y3g0r/modern-full-stack-blog-go/internal/service"
 )
@@ -106,14 +104,6 @@ func (b *Api) CreatePost(ctx context.Context, request CreatePostRequestObject) (
 	if !ok {
 		return CreatePost201JSONResponse{}, fmt.Errorf("missing authentication claims in CreatePost request context, is authentication middleware misconfigured?")
 	}
-	usr, err := user.Get(ctx, claims.Subject)
-	if err != nil {
-		return CreatePost201JSONResponse{}, err
-	}
-
-	slog.Info(fmt.Sprintf(`{"user_id": "%s", "user_banned": "%t"}`, usr.ID, usr.Banned))
-	slog.Info(fmt.Sprintf("%#v", usr))
-
 	post, err := b.posts.CreatePost(service.CreatePostParams{
 		CreatedBy: domain.UserId(claims.Subject),
 		Title:     request.Body.Title,
