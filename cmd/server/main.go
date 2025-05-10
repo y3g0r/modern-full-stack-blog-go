@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"log"
 	"log/slog"
 	"net"
 	"net/http"
@@ -10,6 +12,7 @@ import (
 	clerkhttp "github.com/clerk/clerk-sdk-go/v2/http"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"github.com/lmittmann/tint"
@@ -21,6 +24,8 @@ import (
 )
 
 func main() {
+	ctx := context.Background()
+
 	// logHandler := slog.NewTextHandler(os.Stdout, nil)
 	logHandler := tint.NewHandler(os.Stdout, nil)
 	logger := slog.New(logHandler)
@@ -41,19 +46,27 @@ func main() {
 	// that server names match. We don't know how this thing will be run.
 	swagger.Servers = nil
 
-	// TODO: get connection parameters from config
 	// db, err := sqlx.Connect("postgres", "user=admin password=CHANGEME dbname=blog sslmode=disable")
 	db, err := sqlx.Connect("postgres", config.DATABASE_URL)
 	if err != nil {
-		logger.Error(err.Error())
+		log.Fatal(err)
 	}
+	defer db.Close()
+
+	// conn, err := pgx.Connect(ctx, "user=pqgotest dbname=pqgotest sslmode=verify-full")
+	conn, err := pgxpool.New(ctx, config.DATABASE_URL)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
 
 	postsRepo := repo.NewPostgresPostsRepo(db, logger)
 	// postsRepo := repo.NewInMemoryPostsRepo()
 	postsService := service.NewPostsService(postsRepo)
 
 	// jamsRepo := repo.NewInMemoryJams()
-	jamsRepo := repo.NewPostgresJamsRepo(db, logger)
+	// jamsRepo := repo.NewPostgresJamsRepo(db, logger)
+	jamsRepo := repo.NewJamsRepoSqlc(conn, logger)
 	jamsService := service.NewJams(jamsRepo)
 
 	// Create an instance of our handler which satisfies the generated interface

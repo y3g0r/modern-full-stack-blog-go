@@ -8,6 +8,9 @@ run:
 	if [ -f .env ]; then source .env; fi; \
 	go run cmd/server/main.go
 
+build:
+	go build -gcflags=all="-N -l" -o server cmd/server/main.go
+
 # DB
 db-up:
 	@echo "Starting database..."
@@ -24,6 +27,9 @@ db-migrate:
 		-database "$$DATABASE_URL" \
 		-path db/migrations \
 		up
+
+db-queries:
+	go tool github.com/sqlc-dev/sqlc/cmd/sqlc generate
 
 wait2:
 	sleep 2

@@ -1,0 +1,27 @@
+Table "posts" {
+  "id" serial [pk, increment]
+  "created_by" VARCHAR(200) [not null]
+  "title" VARCHAR(50) [not null]
+  "content" TEXT
+}
+
+Table "jams" {
+  "id" serial [pk, increment]
+  "created_by" VARCHAR(254)
+  "name" TEXT
+  "start_timestamp" TIMESTAMP
+  "end_timestamp" TIMESTAMP
+  "location" TEXT
+}
+
+Table "jam_participants" {
+  "id" serial [pk, increment]
+  "email" VARCHAR(254)
+  "jam_id" integer
+
+  Indexes {
+    email [name: "jam_participants_email_index"]
+  }
+}
+
+Ref:"jams"."id" < "jam_participants"."jam_id"
