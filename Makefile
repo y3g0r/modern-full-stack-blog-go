@@ -36,6 +36,12 @@ wait2:
 
 db-refresh: db-down db-up wait2 db-migrate
 
+db-admin:
+	docker run --rm -d --network jam-schedule --link postgres:db -p 8080:8080 --name adminer adminer
+
+db-admin-down:
+	docker stop adminer
+
 # Docker
 docker-image:
 	@echo "Building docker image..."

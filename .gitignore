@@ -25,3 +25,4 @@ go.work.sum
 .env
 local.env
 server
+dbml-error.log

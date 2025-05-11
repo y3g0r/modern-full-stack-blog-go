@@ -1,23 +1,19 @@
-Table "posts" {
-  "id" serial [pk, increment]
-  "created_by" VARCHAR(200) [not null]
-  "title" VARCHAR(50) [not null]
-  "content" TEXT
-}
+// Use DBML to define your database structure
+// Docs: https://dbml.dbdiagram.io/docs
 
 Table "jams" {
   "id" serial [pk, increment]
-  "created_by" VARCHAR(254)
+  "created_by" VARCHAR(254) [not null]
   "name" TEXT
-  "start_timestamp" TIMESTAMP
-  "end_timestamp" TIMESTAMP
+  "start_timestamp" TIMESTAMP [not null]
+  "end_timestamp" TIMESTAMP [not null]
   "location" TEXT
 }
 
 Table "jam_participants" {
   "id" serial [pk, increment]
-  "email" VARCHAR(254)
-  "jam_id" integer
+  "email" VARCHAR(254) [not null]
+  "jam_id" integer [not null]
 
   Indexes {
     email [name: "jam_participants_email_index"]
@@ -25,3 +21,15 @@ Table "jam_participants" {
 }
 
 Ref:"jams"."id" < "jam_participants"."jam_id"
+
+enum response {
+  accept
+  decline
+}
+
+Table responses {
+  id integer [pk]
+  participant_id integer [not null, ref: > jam_participants.id]
+  response_timestamp timestamp [not null]
+  response response [not null]
+}
