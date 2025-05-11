@@ -245,6 +245,26 @@ func (q *Queries) GetLatestJamResponses(ctx context.Context, id int32) ([]JamPar
 	return items, nil
 }
 
+const getParticipantByParticipantEmailAndJamID = `-- name: GetParticipantByParticipantEmailAndJamID :one
+SELECT p.id, p.email, p.jam_id
+FROM jam_participants p
+WHERE 
+    p.email = $1
+    AND p.jam_id = $2
+`
+
+type GetParticipantByParticipantEmailAndJamIDParams struct {
+	Email string
+	JamID int32
+}
+
+func (q *Queries) GetParticipantByParticipantEmailAndJamID(ctx context.Context, arg GetParticipantByParticipantEmailAndJamIDParams) (JamParticipant, error) {
+	row := q.db.QueryRow(ctx, getParticipantByParticipantEmailAndJamID, arg.Email, arg.JamID)
+	var i JamParticipant
+	err := row.Scan(&i.ID, &i.Email, &i.JamID)
+	return i, err
+}
+
 const getParticipantsByJamIDs = `-- name: GetParticipantsByJamIDs :many
 SELECT p.id, p.email, p.jam_id
 FROM jam_participants p

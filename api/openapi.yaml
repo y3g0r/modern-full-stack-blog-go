@@ -126,8 +126,40 @@ paths:
                     format: int64
                 required:
                   - id
+  /api/v1/jams/{id}/invite:
+    patch:
+      summary: Respond to jam invite
+      operationId: RespondToJamInvite
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                response:
+                  $ref: "#/components/schemas/JamInviteResponse"
+              required:
+                - response
+      responses:
+        '204':
+          description: OK
+        '401':
+          description: Unauthorized
 components:
   schemas:
+    JamInviteResponse:
+      description: indicates whether or not invite was accepted or declined. When participant hasn't responded yet the field is not present.
+      type: string
+      enum: 
+        - accepted
+        - declined
     Post:
       type: object
       required:
@@ -158,12 +190,8 @@ components:
         email:
           type: string
         response:
-          type: string
-          description: indicates whether or not invite was accepted or declined. When participant hasn't responded yet the field is not present.
+          $ref: "#/components/schemas/JamInviteResponse"
           readOnly: true
-          enum:
-            - accepted
-            - decline
       required:
         - email
     Jam:

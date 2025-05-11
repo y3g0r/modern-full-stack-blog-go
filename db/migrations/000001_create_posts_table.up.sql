@@ -28,7 +28,7 @@ CREATE TYPE "response" AS ENUM (
 );
 
 CREATE TABLE IF NOT EXISTS "jam_participant_responses" (
-  "id" integer PRIMARY KEY,
+  "id" serial PRIMARY KEY,
   "participant_id" integer references jam_participants(id) NOT NULL,
   "response_timestamp" timestamp NOT NULL,
   "response" response NOT NULL

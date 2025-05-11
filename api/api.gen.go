@@ -22,10 +22,10 @@ import (
 	strictnethttp "github.com/oapi-codegen/runtime/strictmiddleware/nethttp"
 )
 
-// Defines values for ParticipantResponse.
+// Defines values for JamInviteResponse.
 const (
-	Accepted ParticipantResponse = "accepted"
-	Declined ParticipantResponse = "declined"
+	Accepted JamInviteResponse = "accepted"
+	Declined JamInviteResponse = "declined"
 )
 
 // CreateJamRequest defines model for CreateJamRequest.
@@ -48,14 +48,16 @@ type Jam struct {
 	StartTimestampSeconds int64         `json:"startTimestampSeconds"`
 }
 
+// JamInviteResponse indicates whether or not invite was accepted or declined. When participant hasn't responded yet the field is not present.
+type JamInviteResponse string
+
 // Participant defines model for Participant.
 type Participant struct {
-	Email    string               `json:"email"`
-	Response *ParticipantResponse `json:"response,omitempty"`
-}
+	Email string `json:"email"`
 
-// ParticipantResponse defines model for Participant.Response.
-type ParticipantResponse string
+	// Response indicates whether or not invite was accepted or declined. When participant hasn't responded yet the field is not present.
+	Response *JamInviteResponse `json:"response,omitempty"`
+}
 
 // Post defines model for Post.
 type Post struct {
@@ -68,8 +70,17 @@ type Post struct {
 	UpdatedAt *time.Time `json:"updatedAt,omitempty"`
 }
 
+// RespondToJamInviteJSONBody defines parameters for RespondToJamInvite.
+type RespondToJamInviteJSONBody struct {
+	// Response indicates whether or not invite was accepted or declined. When participant hasn't responded yet the field is not present.
+	Response JamInviteResponse `json:"response"`
+}
+
 // CreateJamJSONRequestBody defines body for CreateJam for application/json ContentType.
 type CreateJamJSONRequestBody = CreateJamRequest
+
+// RespondToJamInviteJSONRequestBody defines body for RespondToJamInvite for application/json ContentType.
+type RespondToJamInviteJSONRequestBody RespondToJamInviteJSONBody
 
 // CreatePostJSONRequestBody defines body for CreatePost for application/json ContentType.
 type CreatePostJSONRequestBody = Post
@@ -85,6 +96,9 @@ type ServerInterface interface {
 	// Create a new jam
 	// (POST /api/v1/jams)
 	CreateJam(w http.ResponseWriter, r *http.Request)
+	// Respond to jam invite
+	// (PATCH /api/v1/jams/{id}/invite)
+	RespondToJamInvite(w http.ResponseWriter, r *http.Request, id int)
 	// Get all posts
 	// (GET /api/v1/posts)
 	GetPosts(w http.ResponseWriter, r *http.Request)
@@ -115,6 +129,12 @@ func (_ Unimplemented) GetJams(w http.ResponseWriter, r *http.Request) {
 // Create a new jam
 // (POST /api/v1/jams)
 func (_ Unimplemented) CreateJam(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Respond to jam invite
+// (PATCH /api/v1/jams/{id}/invite)
+func (_ Unimplemented) RespondToJamInvite(w http.ResponseWriter, r *http.Request, id int) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -176,6 +196,31 @@ func (siw *ServerInterfaceWrapper) CreateJam(w http.ResponseWriter, r *http.Requ
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CreateJam(w, r)
+	}))
+
+	for i := len(siw.HandlerMiddlewares) - 1; i >= 0; i-- {
+		handler = siw.HandlerMiddlewares[i](handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RespondToJamInvite operation middleware
+func (siw *ServerInterfaceWrapper) RespondToJamInvite(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id int
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RespondToJamInvite(w, r, id)
 	}))
 
 	for i := len(siw.HandlerMiddlewares) - 1; i >= 0; i-- {
@@ -408,6 +453,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/api/v1/jams", wrapper.CreateJam)
 	})
 	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/api/v1/jams/{id}/invite", wrapper.RespondToJamInvite)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/v1/posts", wrapper.GetPosts)
 	})
 	r.Group(func(r chi.Router) {
@@ -473,6 +521,31 @@ type CreateJam401Response struct {
 }
 
 func (response CreateJam401Response) VisitCreateJamResponse(w http.ResponseWriter) error {
+	w.WriteHeader(401)
+	return nil
+}
+
+type RespondToJamInviteRequestObject struct {
+	Id   int `json:"id"`
+	Body *RespondToJamInviteJSONRequestBody
+}
+
+type RespondToJamInviteResponseObject interface {
+	VisitRespondToJamInviteResponse(w http.ResponseWriter) error
+}
+
+type RespondToJamInvite204Response struct {
+}
+
+func (response RespondToJamInvite204Response) VisitRespondToJamInviteResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type RespondToJamInvite401Response struct {
+}
+
+func (response RespondToJamInvite401Response) VisitRespondToJamInviteResponse(w http.ResponseWriter) error {
 	w.WriteHeader(401)
 	return nil
 }
@@ -571,6 +644,9 @@ type StrictServerInterface interface {
 	// Create a new jam
 	// (POST /api/v1/jams)
 	CreateJam(ctx context.Context, request CreateJamRequestObject) (CreateJamResponseObject, error)
+	// Respond to jam invite
+	// (PATCH /api/v1/jams/{id}/invite)
+	RespondToJamInvite(ctx context.Context, request RespondToJamInviteRequestObject) (RespondToJamInviteResponseObject, error)
 	// Get all posts
 	// (GET /api/v1/posts)
 	GetPosts(ctx context.Context, request GetPostsRequestObject) (GetPostsResponseObject, error)
@@ -665,6 +741,39 @@ func (sh *strictHandler) CreateJam(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(CreateJamResponseObject); ok {
 		if err := validResponse.VisitCreateJamResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RespondToJamInvite operation middleware
+func (sh *strictHandler) RespondToJamInvite(w http.ResponseWriter, r *http.Request, id int) {
+	var request RespondToJamInviteRequestObject
+
+	request.Id = id
+
+	var body RespondToJamInviteJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RespondToJamInvite(ctx, request.(RespondToJamInviteRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RespondToJamInvite")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RespondToJamInviteResponseObject); ok {
+		if err := validResponse.VisitRespondToJamInviteResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -815,20 +924,22 @@ func (sh *strictHandler) UpdatePost(w http.ResponseWriter, r *http.Request, id i
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/+SWz3LbNhDGXwWD9siItOPpgbc4nnbsThtP0pwSH1bASoYNAgiwTEf18N07AOQ/JBhH",
-	"dkfOoTeKABf7/fbbhW64sJ2zBg0F3t7wIC6xg/T41iMQnkH3Hr/0GCi+c9469KQw7UAj/1IdBoLOfUBh",
-	"jUyvV9Z3QLzlytAvR7zitHGYf+IaPR8qrq0AUtbE7dvVQF6ZdVw00OHsggNPSigH22QVYZcefva44i3/",
-	"qb4XU2+V1Of3H8UY26DgPWzi70Dg6Vkqhop7/NIrj5K3n3LW34pXzbJ6wGEi7uLuOLu8QpEyP4OuLIFI",
-	"RZLHm1lgzy+Qkv/fSirJqwdgq/2X9qGysss6UHqWosfgrAmYe7HvYvIgBDrCKEGi0MqgjEd6BPnO6A1v",
-	"yfdYTWNNCOQjZzO1c4MAerq0Pj5955yKC2sIs8xyLTN/Q6OqSSB8RSqVoPgk+7S0JcF6bKziy6l9SJGe",
-	"N2vv5NPSmtDMkUuacZ8yKxvDSgzCK5c7if9m2RLENRrJVtazY23X7M35KVt527HP/A8r0Rv2a6/1qw8E",
-	"4pq9RxDEzr2NkcNnzpbWXrPlhp2AUajZcb/WFTtsDo8W/E7qbZxVrzULKc5S2zWv+Ff0IWfSLJrFQYRg",
-	"HRpwirf89aJZvE6upsuEtgan6q8H9RVk1GtMpKJBUgecyigJ6Syu37s27T1smjTG7l0BzmmVW6e+Cnmw",
-	"5Amw86CIk7KocKQ9pvzu97jrqDkoC/DRZEurf1Cmeoa+68BvshAGWrOkNo6ybUeM5d5dnjx7AQMdW7l5",
-	"ktbHJBaX8zB2Xey+oWB98KTzxz2+441QztKLGfQ5ffkc/vlTBszg37EIafnWgrEYj3rwPG14CROmSbmj",
-	"C2cNlrV8x2HplP1YLAt4GVv9Rxd92yAui5g4pL5Rcsiu00hYwj1J77dwHXjokNAH3n664SoeHYff7T+D",
-	"Nv9jGFOqHigu1F0UCI/KHvjTsrdbpmOBOTkGSVwc8qcn0SaPWf6FVDR7MN8u3TIh4YDEZcniY7rH94vj",
-	"R7bhD6CfkU4KMAzDvwEAAP//Qvm9LlcOAAA=",
+	"H4sIAAAAAAAC/+RWTXPbNhD9KztoZ3phJNnx9KBbHE87dqeNx0mmh8SHFbESYYMAAiztUT367x0AtCWK",
+	"9JdaO4fcKAJc4L19761uRGlrZw0ZDmJ6I0JZUY3p8b0nZDrB+oy+NRQ4vnPeOvKsKO0gIz+pmgJj7T5S",
+	"aY1Mr+fW18hiKpThXw9EIXjpKP+kBXmxKoS2JbKyJm5vVwN7ZRZx0WBNgwsOPatSOWwvq5jq9PCzp7mY",
+	"ip/GazDjFsn4dP1RrNEWRe9xGX8HRs87oVgVwtO3RnmSYvol3/q+esUgVxs8bIE7vzvOzi6oTDc/wbrf",
+	"gjI1SR4uBwnbvUFK/ridVFIUG8QWr9LaY3OlmM4oOGtCIk1SKL1ymVyhjFQlMgW4rogr8mA9GMug0odw",
+	"jQGwLMkxybgkqdTKkBzB3xUZ2LgCVBjMLww+nSVJwpIYuCKYK9ISVEh1nadAhkcJYFNHYm7ri0Lclt+A",
+	"s+7uZqP6oVGj0oOi8BvgH9JBn63tDuYzhpg+tUNBhg1X1scnTyg/GL0UU/YNDWArrWHKuPprWTPvuKM6",
+	"iUxvWCUJ9T7JPuvbinHRNUbvy235s2I9bLbGyedda4vNXLnPZtynzNz2xfq7hRmWl2QkzK2HQ20X8O70",
+	"GObe1vBV/GkleQO/NVq/+chYXsIZYclw6m2sHL4KmFl7CbMlHKFRpOGwWegC9if7B1GPLdTbOvNGawip",
+	"zkzbhSjEFfmQbzIZTUZ7kQTryKBTYirejiajt8mVXCVqx+jU+GpvfIGZ6gUlpqJAkoOPZYREfBLX1zJN",
+	"e/cnkxTDa1Wgc1pl648vQg7GrNwnB11M+l6HI9tdlj/8EXcdTPb6DfhssqTVPyRTP0NT1+iXGQig1pDQ",
+	"xihuHdGFezf8RdYCBT60cvksrA9B7P25WHVVF9236nG996zzux5/4kTrz4LzAerz9eUu/OdPAcHQdWxC",
+	"Wt6U4PhGydU4x3qCgVxW/Q7l8JOf7F0c5kmDNTH5IKZfboSKd4k6vx1i0zzcujwXG5z16Djfvf9d/v+/",
+	"dL+rNBxJj4nooN+u3ZzUdgDYxj62g7jTzuitByPlNG14jUxJg++JoTKYFxnLI4GRTnmZxMgAXicl/mMo",
+	"3O93l0FsKSQ5PktPUzZ9l9yj9L4l94U8/phH/rLwvuW0CzBfDjCBizP7+CjK5CHJvxKKyQuI7ylu2WLi",
+	"ngD/nP6WvSwd39OG34H9TOlWA1ar1b8BAAD//y4u0lHmEAAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

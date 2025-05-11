@@ -4,7 +4,17 @@ import "time"
 
 type Participant struct {
 	EmailAddress string
+	JamInviteResponse *InviteResponse
 }
+
+type JamId string
+
+type InviteResponse string
+
+const (
+	InviteAccepted InviteResponse = "accepted"
+	InviteDeclined InviteResponse = "declined"
+)
 
 type Jam struct {
 	ID             string

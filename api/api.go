@@ -5,7 +5,6 @@ package api
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"strconv"
 	"time"
 
@@ -42,6 +41,8 @@ func (b *Api) GetJams(ctx context.Context, request GetJamsRequestObject) (GetJam
 		return GetJams200JSONResponse{}, err
 	}
 
+	accepted := Accepted
+	declined := Declined
 	response := make([]Jam, len(result.Jams))
 	for i, jam := range result.Jams {
 		id, err := strconv.ParseInt(jam.ID, 10, 64)
@@ -50,14 +51,21 @@ func (b *Api) GetJams(ctx context.Context, request GetJamsRequestObject) (GetJam
 		}
 		participants := make([]Participant, len(jam.Participants))
 		for i, p := range jam.Participants {
-			accepted := Accepted
-			declined := Declined
-			var response *ParticipantResponse
-			if r := rand.Float32(); r < 0.33 {
-				response = &accepted
-			} else if r < 0.66 {
-				response = &declined
+			var response *JamInviteResponse
+
+			// if r := rand.Float32(); r < 0.33 {
+			// 	response = &accepted
+			// } else if r < 0.66 {
+			// 	response = &declined
+			// }
+			if p.JamInviteResponse != nil {
+				if *p.JamInviteResponse == domain.InviteAccepted {
+					response = &accepted
+				} else if *p.JamInviteResponse == domain.InviteDeclined {
+					response = &declined
+				}
 			}
+
 			// else leave it nil
 			participants[i] = Participant{
 				Email:    p.EmailAddress,
@@ -102,11 +110,32 @@ func (b *Api) CreateJam(ctx context.Context, request CreateJamRequestObject) (Cr
 	if err != nil {
 		return CreateJam201JSONResponse{}, err
 	}
-	id, err := strconv.ParseInt(result.JamId, 10, 64)
+	id, err := strconv.ParseInt(string(result.JamId), 10, 64)
 	if err != nil {
 		return CreateJam201JSONResponse{}, err
 	}
 	return CreateJam201JSONResponse{Id: id}, err
+}
+
+// RespondToJamInvite implements StrictServerInterface.
+func (b *Api) RespondToJamInvite(ctx context.Context, request RespondToJamInviteRequestObject) (RespondToJamInviteResponseObject, error) {
+	claims, ok := clerk.SessionClaimsFromContext(ctx)
+	if !ok {
+		return RespondToJamInvite401Response{}, nil
+	}
+
+	response := domain.InviteAccepted
+	if request.Body.Response == Declined {
+		response = domain.InviteDeclined
+	}
+
+	err := b.jamsService.RespondToJamInvite(ctx, service.ResponseToJamInviteParams{
+		JamId:    domain.JamId(strconv.FormatInt(int64(request.Id), 10)),
+		UserId:   claims.Subject,
+		Response: response,
+	})
+
+	return RespondToJamInvite204Response{}, err
 }
 
 // CreatePost implements StrictServerInterface.

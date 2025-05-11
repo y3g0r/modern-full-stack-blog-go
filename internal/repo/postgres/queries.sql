@@ -42,6 +42,13 @@ SELECT p.id, p.email, p.jam_id
 FROM jam_participants p
 WHERE p.jam_id = ANY(sqlc.arg(ids)::int[]);
 
+-- name: GetParticipantByParticipantEmailAndJamID :one
+SELECT p.id, p.email, p.jam_id
+FROM jam_participants p
+WHERE 
+    p.email = $1
+    AND p.jam_id = $2;
+
 -- name: CreateJamParticipantResponse :one
 INSERT INTO "jam_participant_responses" (
   "participant_id",  -- 1

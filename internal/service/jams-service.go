@@ -15,6 +15,7 @@ import (
 type JamsRepository interface {
 	CreateJam(context.Context, domain.Jam) error
 	GetAllJams(context.Context, repo.GetAllJamsParams) ([]domain.Jam, error)
+	CreateJamInviteResponse(context.Context, repo.CreateJamInviteResponseParams) error
 }
 
 type Jams struct {
@@ -40,7 +41,7 @@ type CreateJamParams struct {
 }
 
 type CreateJamResult struct {
-	JamId string
+	JamId domain.JamId
 }
 
 func (j *Jams) getUserPrimaryEmailAddress(ctx context.Context, usrId string) (string, error) {
@@ -100,7 +101,7 @@ func (j *Jams) CreateJam(ctx context.Context, p CreateJamParams) (CreateJamResul
 	defer func() { j.nextJamId++ }()
 
 	j.repo.CreateJam(ctx, jam)
-	return CreateJamResult{JamId: jamId}, nil
+	return CreateJamResult{JamId: domain.JamId(jamId)}, nil
 }
 
 type GetAllJamsParams struct {
@@ -112,14 +113,13 @@ type GetAllJamsResult struct {
 }
 
 func (j *Jams) GetAllJams(ctx context.Context, p GetAllJamsParams) (GetAllJamsResult, error) {
-	// TODO: clean architecture, use interface & application types
-	usr, err := user.Get(ctx, p.UserId)
+	userEmailAddress, err := j.getUserPrimaryEmailAddress(ctx, p.UserId)
 	if err != nil {
 		return GetAllJamsResult{}, err
 	}
 
 	jams, err := j.repo.GetAllJams(ctx, repo.GetAllJamsParams{
-		UserEmailAddress: usr.EmailAddresses[0].EmailAddress, // FIXME
+		UserEmailAddress: userEmailAddress,
 	})
 	if err != nil {
 		return GetAllJamsResult{}, err
@@ -128,4 +128,29 @@ func (j *Jams) GetAllJams(ctx context.Context, p GetAllJamsParams) (GetAllJamsRe
 	return GetAllJamsResult{
 		Jams: jams,
 	}, nil
+}
+
+type ResponseToJamInviteParams struct {
+	JamId    domain.JamId
+	UserId   string
+	Response domain.InviteResponse
+}
+
+func (j *Jams) RespondToJamInvite(ctx context.Context, p ResponseToJamInviteParams) error {
+	inviteeEmailAddress, err := j.getUserPrimaryEmailAddress(ctx, p.UserId)
+	if err != nil {
+		return err
+	}
+
+	err = j.repo.CreateJamInviteResponse(ctx, repo.CreateJamInviteResponseParams{
+		JamId:                   p.JamId,
+		ParticipantEmailAddress: inviteeEmailAddress,
+		Response:                p.Response,
+		ResponseTimestamp:       time.Now(),
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
