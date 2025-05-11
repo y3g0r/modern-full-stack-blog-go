@@ -157,6 +157,13 @@ components:
       properties:
         email:
           type: string
+        response:
+          type: string
+          description: indicates whether or not invite was accepted or declined. When participant hasn't responded yet the field is not present.
+          readOnly: true
+          enum:
+            - accepted
+            - decline
       required:
         - email
     Jam:

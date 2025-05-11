@@ -22,6 +22,12 @@ import (
 	strictnethttp "github.com/oapi-codegen/runtime/strictmiddleware/nethttp"
 )
 
+// Defines values for ParticipantResponse.
+const (
+	Accepted ParticipantResponse = "accepted"
+	Declined ParticipantResponse = "declined"
+)
+
 // CreateJamRequest defines model for CreateJamRequest.
 type CreateJamRequest struct {
 	EndTimestampSeconds   int64         `json:"endTimestampSeconds"`
@@ -44,8 +50,12 @@ type Jam struct {
 
 // Participant defines model for Participant.
 type Participant struct {
-	Email string `json:"email"`
+	Email    string               `json:"email"`
+	Response *ParticipantResponse `json:"response,omitempty"`
 }
+
+// ParticipantResponse defines model for Participant.Response.
+type ParticipantResponse string
 
 // Post defines model for Post.
 type Post struct {
@@ -805,19 +815,20 @@ func (sh *strictHandler) UpdatePost(w http.ResponseWriter, r *http.Request, id i
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
+	"R7bhD6CfkU4KMAzDvwEAAP//Qvm9LlcOAAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

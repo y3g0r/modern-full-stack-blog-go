@@ -5,6 +5,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"strconv"
 	"time"
 
@@ -49,8 +50,18 @@ func (b *Api) GetJams(ctx context.Context, request GetJamsRequestObject) (GetJam
 		}
 		participants := make([]Participant, len(jam.Participants))
 		for i, p := range jam.Participants {
+			accepted := Accepted
+			declined := Declined
+			var response *ParticipantResponse
+			if r := rand.Float32(); r < 0.33 {
+				response = &accepted
+			} else if r < 0.66 {
+				response = &declined
+			}
+			// else leave it nil
 			participants[i] = Participant{
-				Email: p.EmailAddress,
+				Email:    p.EmailAddress,
+				Response: response,
 			}
 		}
 
