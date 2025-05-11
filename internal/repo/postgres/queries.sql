@@ -41,3 +41,36 @@ WHERE j.id = ANY(sqlc.arg(ids)::int[]);
 SELECT p.id, p.email, p.jam_id
 FROM jam_participants p
 WHERE p.jam_id = ANY(sqlc.arg(ids)::int[]);
+
+-- name: CreateJamParticipantResponse :one
+INSERT INTO "jam_participant_responses" (
+  "participant_id",  -- 1
+  "response_timestamp", -- 2
+  "response"    -- 3
+) VALUES (
+  $1, $2, $3
+)
+RETURNING *;
+
+-- name: GetAllJamResponses :many
+SELECT 
+    r.id,
+    r.participant_id,
+    r.response_timestamp,
+    r.response
+FROM "jam_participant_responses" r
+JOIN "jam_participants" p ON r.participant_id = p.id
+JOIN "jams" j ON p.jam_id = j.id
+WHERE j.id = $1;
+
+-- name: GetLatestJamResponses :many
+SELECT DISTINCT ON (r.participant_id)
+    r.id,
+    r.participant_id,
+    r.response_timestamp,
+    r.response
+FROM "jam_participant_responses" r
+JOIN "jam_participants" p ON r.participant_id = p.id
+JOIN "jams" j ON p.jam_id = j.id
+WHERE j.id = $1
+ORDER BY r.participant_id, r.response_timestamp DESC;

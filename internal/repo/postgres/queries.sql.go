@@ -25,7 +25,7 @@ RETURNING id, created_by, name, start_timestamp, end_timestamp, location
 `
 
 type CreateJamParams struct {
-	CreatedBy      pgtype.Text
+	CreatedBy      string
 	Name           pgtype.Text
 	StartTimestamp pgtype.Timestamp
 	EndTimestamp   pgtype.Timestamp
@@ -64,8 +64,8 @@ RETURNING id, email, jam_id
 `
 
 type CreateJamParticipantParams struct {
-	Email pgtype.Text
-	JamID pgtype.Int4
+	Email string
+	JamID int32
 }
 
 func (q *Queries) CreateJamParticipant(ctx context.Context, arg CreateJamParticipantParams) (JamParticipant, error) {
@@ -75,6 +75,72 @@ func (q *Queries) CreateJamParticipant(ctx context.Context, arg CreateJamPartici
 	return i, err
 }
 
+const createJamParticipantResponse = `-- name: CreateJamParticipantResponse :one
+INSERT INTO "jam_participant_responses" (
+  "participant_id",  -- 1
+  "response_timestamp", -- 2
+  "response"    -- 3
+) VALUES (
+  $1, $2, $3
+)
+RETURNING id, participant_id, response_timestamp, response
+`
+
+type CreateJamParticipantResponseParams struct {
+	ParticipantID     int32
+	ResponseTimestamp pgtype.Timestamp
+	Response          Response
+}
+
+func (q *Queries) CreateJamParticipantResponse(ctx context.Context, arg CreateJamParticipantResponseParams) (JamParticipantResponse, error) {
+	row := q.db.QueryRow(ctx, createJamParticipantResponse, arg.ParticipantID, arg.ResponseTimestamp, arg.Response)
+	var i JamParticipantResponse
+	err := row.Scan(
+		&i.ID,
+		&i.ParticipantID,
+		&i.ResponseTimestamp,
+		&i.Response,
+	)
+	return i, err
+}
+
+const getAllJamResponses = `-- name: GetAllJamResponses :many
+SELECT 
+    r.id,
+    r.participant_id,
+    r.response_timestamp,
+    r.response
+FROM "jam_participant_responses" r
+JOIN "jam_participants" p ON r.participant_id = p.id
+JOIN "jams" j ON p.jam_id = j.id
+WHERE j.id = $1
+`
+
+func (q *Queries) GetAllJamResponses(ctx context.Context, id int32) ([]JamParticipantResponse, error) {
+	rows, err := q.db.Query(ctx, getAllJamResponses, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []JamParticipantResponse
+	for rows.Next() {
+		var i JamParticipantResponse
+		if err := rows.Scan(
+			&i.ID,
+			&i.ParticipantID,
+			&i.ResponseTimestamp,
+			&i.Response,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getJamIdsByParticipantEmail = `-- name: GetJamIdsByParticipantEmail :many
 SELECT j.id
 FROM jams j
@@ -82,7 +148,7 @@ JOIN jam_participants p ON p.jam_id = j.id
 WHERE p.email = $1
 `
 
-func (q *Queries) GetJamIdsByParticipantEmail(ctx context.Context, email pgtype.Text) ([]int32, error) {
+func (q *Queries) GetJamIdsByParticipantEmail(ctx context.Context, email string) ([]int32, error) {
 	rows, err := q.db.Query(ctx, getJamIdsByParticipantEmail, email)
 	if err != nil {
 		return nil, err
@@ -130,6 +196,44 @@ func (q *Queries) GetJamsByIDs(ctx context.Context, ids []int32) ([]Jam, error) 
 			&i.StartTimestamp,
 			&i.EndTimestamp,
 			&i.Location,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getLatestJamResponses = `-- name: GetLatestJamResponses :many
+SELECT DISTINCT ON (r.participant_id)
+    r.id,
+    r.participant_id,
+    r.response_timestamp,
+    r.response
+FROM "jam_participant_responses" r
+JOIN "jam_participants" p ON r.participant_id = p.id
+JOIN "jams" j ON p.jam_id = j.id
+WHERE j.id = $1
+ORDER BY r.participant_id, r.response_timestamp DESC
+`
+
+func (q *Queries) GetLatestJamResponses(ctx context.Context, id int32) ([]JamParticipantResponse, error) {
+	rows, err := q.db.Query(ctx, getLatestJamResponses, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []JamParticipantResponse
+	for rows.Next() {
+		var i JamParticipantResponse
+		if err := rows.Scan(
+			&i.ID,
+			&i.ParticipantID,
+			&i.ResponseTimestamp,
+			&i.Response,
 		); err != nil {
 			return nil, err
 		}

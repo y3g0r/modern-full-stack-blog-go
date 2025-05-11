@@ -27,7 +27,7 @@ CREATE TYPE "response" AS ENUM (
   'decline'
 );
 
-CREATE TABLE IF NOT EXISTS "responses" (
+CREATE TABLE IF NOT EXISTS "jam_participant_responses" (
   "id" integer PRIMARY KEY,
   "participant_id" integer references jam_participants(id) NOT NULL,
   "response_timestamp" timestamp NOT NULL,

@@ -33,7 +33,7 @@ func (r *repo) CreateJam(ctx context.Context, jam domain.Jam) error {
 
 	queries := postgres.New(tx)
 	created, err := queries.CreateJam(ctx, postgres.CreateJamParams{
-		CreatedBy:      pgtype.Text{String: jam.CreatedBy, Valid: true},
+		CreatedBy:      jam.CreatedBy,
 		Name:           pgtype.Text{String: jam.Name, Valid: true},
 		StartTimestamp: pgtype.Timestamp{Time: jam.StartTimestamp, Valid: true},
 		EndTimestamp:   pgtype.Timestamp{Time: jam.EndTimestamp, Valid: true},
@@ -46,8 +46,8 @@ func (r *repo) CreateJam(ctx context.Context, jam domain.Jam) error {
 
 	for _, p := range jam.Participants {
 		_, err := queries.CreateJamParticipant(ctx, postgres.CreateJamParticipantParams{
-			Email: pgtype.Text{String: p.EmailAddress, Valid: true},
-			JamID: pgtype.Int4{Int32: created.ID, Valid: true},
+			Email: p.EmailAddress,
+			JamID: created.ID,
 		})
 		if err != nil {
 			r.logger.Error("Error on attempt to insert jam participant into DB: " + err.Error())
@@ -66,7 +66,7 @@ func (r *repo) GetAllJams(ctx context.Context, p GetAllJamsParams) ([]domain.Jam
 		return []domain.Jam{}, err
 	}
 	queries := postgres.New(conn)
-	jamIds, err := queries.GetJamIdsByParticipantEmail(ctx, pgtype.Text{String: p.UserEmailAddress, Valid: true})
+	jamIds, err := queries.GetJamIdsByParticipantEmail(ctx, p.UserEmailAddress)
 	if err != nil {
 		return []domain.Jam{}, err
 	}
@@ -89,16 +89,16 @@ func (r *repo) GetAllJams(ctx context.Context, p GetAllJamsParams) ([]domain.Jam
 	for i, r := range jamRecords {
 		var participants []domain.Participant
 		for _, p := range participantRecords {
-			if p.JamID.Int32 == r.ID {
+			if p.JamID == r.ID {
 				participants = append(participants, domain.Participant{
-					EmailAddress: p.Email.String,
+					EmailAddress: p.Email,
 				})
 			}
 		}
 
 		jams[i] = domain.Jam{
 			ID:             strconv.FormatInt(int64(r.ID), 10),
-			CreatedBy:      r.CreatedBy.String,
+			CreatedBy:      r.CreatedBy,
 			Name:           r.Name.String,
 			StartTimestamp: r.StartTimestamp.Time,
 			EndTimestamp:   r.EndTimestamp.Time,

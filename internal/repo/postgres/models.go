@@ -5,12 +5,57 @@
 package postgres
 
 import (
+	"database/sql/driver"
+	"fmt"
+
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Response string
+
+const (
+	ResponseAccept  Response = "accept"
+	ResponseDecline Response = "decline"
+)
+
+func (e *Response) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = Response(s)
+	case string:
+		*e = Response(s)
+	default:
+		return fmt.Errorf("unsupported scan type for Response: %T", src)
+	}
+	return nil
+}
+
+type NullResponse struct {
+	Response Response
+	Valid    bool // Valid is true if Response is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullResponse) Scan(value interface{}) error {
+	if value == nil {
+		ns.Response, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.Response.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullResponse) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.Response), nil
+}
+
 type Jam struct {
 	ID             int32
-	CreatedBy      pgtype.Text
+	CreatedBy      string
 	Name           pgtype.Text
 	StartTimestamp pgtype.Timestamp
 	EndTimestamp   pgtype.Timestamp
@@ -19,8 +64,15 @@ type Jam struct {
 
 type JamParticipant struct {
 	ID    int32
-	Email pgtype.Text
-	JamID pgtype.Int4
+	Email string
+	JamID int32
+}
+
+type JamParticipantResponse struct {
+	ID                int32
+	ParticipantID     int32
+	ResponseTimestamp pgtype.Timestamp
+	Response          Response
 }
 
 type Post struct {
